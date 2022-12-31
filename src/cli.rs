@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use argh::FromArgs;
 
-use crate::{ffi, Visitor};
+use crate::{ffi, visitor::Visitor};
 
 #[derive(FromArgs)]
 /// A simple and performant `GNU stow`-like dotfiles linker.
@@ -17,7 +17,10 @@ pub struct Options {
 
 impl Options {
     pub fn into_visitor(self) -> Visitor {
-        Visitor { source: self.source, target: self.target }
+        Visitor {
+            source: self.source,
+            target: self.target,
+        }
     }
 }
 

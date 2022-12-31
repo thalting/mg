@@ -36,9 +36,7 @@ pub fn home_dir() -> Option<PathBuf> {
         let home_dir = unsafe { CStr::from_ptr(passwd.pw_dir) };
         let bytes = home_dir.to_bytes().to_vec();
 
-        return Some(
-            OsString::from_vec(bytes).into(),
-        );
+        return Some(OsString::from_vec(bytes).into());
     }
 
     None

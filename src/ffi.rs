@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 mod getpwuid;
 
-
 pub fn home_directory() -> PathBuf {
     match std::env::var_os("HOME") {
         Some(home) => home.into(),
