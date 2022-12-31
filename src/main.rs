@@ -1,27 +1,30 @@
-use std::{ffi::OsStr, os::unix::fs::symlink, path::Path};
+use std::{os::unix::fs::symlink, path::{Path, PathBuf}};
 
-use ffi::ToPath;
+use cli::Options;
 use ignore::{DirEntry, WalkBuilder};
 
+mod cli;
 mod ffi;
 
 pub type StaticPath = &'static Path;
 
 pub struct Visitor {
-    pub(crate) home_directory: &'static Path,
-    pub(crate) dotfiles_repository: &'static Path,
+    /// The Git repository we will read the dotfiles from
+    pub(crate) source: PathBuf,
+    /// The target directory where the dotfiles will be symlinked to
+    pub(crate) target: PathBuf,
 }
 
 impl Visitor {
-    pub fn new(dotfiles_repository: &'static OsStr) -> Self {
+    pub fn new(dotfiles_repository: PathBuf) -> Self {
         Self {
-            home_directory: ffi::home_directory().to_path(),
-            dotfiles_repository: Path::new(dotfiles_repository),
+            target: ffi::home_directory(),
+            source: dotfiles_repository,
         }
     }
 
     pub fn symlink_files(&self) {
-        let dir_walker = WalkBuilder::new(self.dotfiles_repository)
+        let dir_walker = WalkBuilder::new(&self.source)
             .follow_links(false)
             // TODO: maybe this should be true
             .require_git(false)
@@ -29,7 +32,7 @@ impl Visitor {
 
         // How many components in the path of the dotfiles repository
         let dotfiles_repo_components =
-            self.dotfiles_repository.components().count();
+            self.source.components().count();
 
         // Returns true if this entry is part of the Git repository
         // that holds the supplied dotfiles
@@ -52,7 +55,12 @@ impl Visitor {
                 }
             };
 
-            if is_git_file(&entry) {
+            dbg!(entry.path());
+
+            if entry.path().is_dir()
+                || entry.path() == Path::new(".")
+                || is_git_file(&entry)
+            {
                 continue;
             }
 
@@ -64,14 +72,15 @@ impl Visitor {
             // somewhere else due to following a symlink, but WalkDir
             // is set to not follow symlinks
             let sub_path =
-                path.strip_prefix(self.dotfiles_repository).unwrap();
+                path.strip_prefix(&self.source).unwrap();
 
-            let target = self.home_directory.join(sub_path);
+            let target = self.target.join(sub_path);
 
             if let Err(err) = symlink(path, &target) {
                 eprintln!(
                     "Failed to symlink {path:?} to {target:?}: {err}"
                 );
+                continue;
             }
 
             println!("Linked {path:?} to {target:?}");
@@ -80,10 +89,7 @@ impl Visitor {
 }
 
 fn main() {
-    let dotfiles_repo = argv::iter()
-        .nth(1)
-        .expect("Dotfiles repository not supplied");
-
-    let visitor = Visitor::new(dotfiles_repo);
-    visitor.symlink_files();
+    let options: Options = argh::from_env();
+    
+    options.into_visitor().symlink_files()
 }

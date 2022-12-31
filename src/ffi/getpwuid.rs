@@ -1,17 +1,19 @@
-use std::{ffi::CStr, mem, ptr};
+use std::{
+    ffi::{CStr, OsString},
+    mem,
+    os::unix::prelude::OsStringExt,
+    path::PathBuf,
+    ptr,
+};
 
 use libc::{c_char, getpwuid_r, passwd};
-
-static mut BUF: [c_char; 2048] = [0; 2048];
 
 fn effective_user_id() -> u32 {
     unsafe { libc::geteuid() }
 }
 
-pub fn home_dir() -> Option<&'static CStr> {
-    // Safety: it is safe to modify BUF since there are no other
-    // threads accessing it
-    let buf = unsafe { &mut BUF };
+pub fn home_dir() -> Option<PathBuf> {
+    let mut buf: [c_char; 2048] = [0; 2048];
 
     let mut result = ptr::null_mut();
     let mut passwd: passwd = unsafe { mem::zeroed() };
@@ -32,8 +34,11 @@ pub fn home_dir() -> Option<&'static CStr> {
         // Safety: getpwuid_r worked so `passwd.pw_dir` points to a
         // valid C string within static memory (i.e. within BUF)
         let home_dir = unsafe { CStr::from_ptr(passwd.pw_dir) };
+        let bytes = home_dir.to_bytes().to_vec();
 
-        return Some(home_dir);
+        return Some(
+            OsString::from_vec(bytes).into(),
+        );
     }
 
     None
