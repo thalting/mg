@@ -9,9 +9,6 @@ mod getpwuid;
 
 use cstr::cstr;
 use getenv::getenv;
-use libc::strlen;
-
-// pub use getpwuid::home_dir;
 
 pub fn home_directory() -> &'static CStr {
     match getenv(cstr!("HOME")) {
@@ -31,14 +28,7 @@ pub trait ToOsStr {
 
 impl ToOsStr for &'static CStr {
     fn to_os_str(&self) -> &'static OsStr {
-        let length = unsafe { strlen(self.as_ptr()) };
-        let slice = unsafe {
-            std::slice::from_raw_parts(
-                self.as_ptr() as *const u8,
-                length,
-            )
-        };
-        OsStr::from_bytes(slice)
+        OsStr::from_bytes(self.to_bytes())
     }
 }
 

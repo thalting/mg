@@ -1,10 +1,7 @@
-use std::{
-    collections::btree_map::Entry, ffi::OsStr, os::unix::fs::symlink,
-    path::Path,
-};
+use std::{ffi::OsStr, os::unix::fs::symlink, path::Path};
 
 use ffi::ToPath;
-use walkdir::{DirEntry, WalkDir};
+use ignore::{DirEntry, WalkBuilder};
 
 mod ffi;
 
@@ -24,8 +21,12 @@ impl Visitor {
     }
 
     pub fn symlink_files(&self) {
-        let dir_walker = WalkDir::new(self.dotfiles_repository)
-            .follow_links(false);
+        let dir_walker = WalkBuilder::new(self.dotfiles_repository)
+            .follow_links(false)
+            // TODO: maybe this should be true
+            .require_git(false)
+            .build();
+
         // How many components in the path of the dotfiles repository
         let dotfiles_repo_components =
             self.dotfiles_repository.components().count();
@@ -46,13 +47,12 @@ impl Visitor {
                 Ok(entry) => entry,
                 Err(err) => {
                     // tomou kkkkkkk
-                    eprintln!("Error while dirwalking: {}", err);
+                    eprintln!("Error while dirwalking: {err}");
                     continue;
                 }
             };
 
             if is_git_file(&entry) {
-                // eprintln!("Skipping {:?}", entry.path());
                 continue;
             }
 
@@ -74,7 +74,7 @@ impl Visitor {
                 );
             }
 
-            println!("Linked {:?} to {:?}", path, target);
+            println!("Linked {path:?} to {target:?}");
         }
     }
 }
@@ -86,7 +86,4 @@ fn main() {
 
     let visitor = Visitor::new(dotfiles_repo);
     visitor.symlink_files();
-
-    dbg!(visitor.home_directory);
-    dbg!(visitor.dotfiles_repository);
 }
