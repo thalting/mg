@@ -1,0 +1,10 @@
+[package]
+name = "mg"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+argv = "0.1.7"
+cstr = "0.2.11"
+libc = "0.2.139"
+walkdir = "2.3.2"
